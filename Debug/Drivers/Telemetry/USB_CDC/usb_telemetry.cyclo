@@ -1,0 +1,3 @@
+../Drivers/Telemetry/USB_CDC/usb_telemetry.c:7:6:USB_Telemetry_Init	1
+../Drivers/Telemetry/USB_CDC/usb_telemetry.c:12:6:USB_Telemetry_SendCalibrationStatus	18
+../Drivers/Telemetry/USB_CDC/usb_telemetry.c:112:6:USB_Telemetry_SendIMU	4

@@ -1,0 +1,8 @@
+../Drivers/IMU/MPU6050/mpu6050.c:5:26:MPU6050_WriteReg	32	static
+../Drivers/IMU/MPU6050/mpu6050.c:23:26:MPU6050_ReadReg	40	static
+../Drivers/IMU/MPU6050/mpu6050.c:41:19:MPU6050_Init	32	static
+../Drivers/IMU/MPU6050/mpu6050.c:159:19:MPU6050_Read_DMA	32	static
+../Drivers/IMU/MPU6050/mpu6050.c:192:6:MPU6050_RxCompleteCallback	16	static
+../Drivers/IMU/MPU6050/mpu6050.c:199:6:MPU6050_ErrorCallback	16	static
+../Drivers/IMU/MPU6050/mpu6050.c:206:16:MPU6050_ConvertInt16	16	static
+../Drivers/IMU/MPU6050/mpu6050.c:215:6:MPU6050_ParseData	32	static
