@@ -28,6 +28,8 @@
 #include "mpu6050.h"
 #include "imu_calibration.h"
 #include "usb_telemetry.h"
+#include "mekf.h"
+#include "motor_mixer.h"
 
 /* USER CODE END Includes */
 
@@ -40,6 +42,14 @@
 /* USER CODE BEGIN PD */
 #define CAL_BUTTON_PORT GPIOB
 #define CAL_BUTTON_PIN  GPIO_PIN_0
+
+/* Samples further apart than this are treated as a data gap (seconds). */
+#define ATTITUDE_MAX_DT_S   (0.1f)
+
+/* Compute the motor mixer from the attitude estimate (1) or hold it off (0).
+ * The mixer output is only calculated and telemetered; nothing here drives
+ * the motors. */
+#define MIXER_ENABLED       (1)
 
 /* USER CODE END PD */
 
@@ -74,6 +84,29 @@ static uint32_t button_last_change = 0;
 static uint8_t next_face = 0;
 static uint8_t selected_face = 0;
 
+/* Attitude estimation + motor mixing */
+MEKF_t ekf;
+MotorMixer_t mixer;
+Telemetry_Data_t telemetry;
+
+static uint8_t  att_timebase_valid = 0;
+static uint32_t att_last_cycle = 0;
+static uint32_t att_last_tick = 0;
+
+/*
+ * Sensor frame -> body frame (FRD: x forward, y right, z down).
+ * body = SENSOR_TO_BODY * sensor.
+ * Default: sensor x forward, y left, z up (accelerometer reads +1 g on Z
+ * when level), which is diag(1,-1,-1). CHANGE THIS to match how the board
+ * is mounted in the airframe.
+ */
+static const float SENSOR_TO_BODY[3][3] =
+{
+    {  1.0f,  0.0f,  0.0f },
+    {  0.0f, -1.0f,  0.0f },
+    {  0.0f,  0.0f, -1.0f }
+};
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -81,6 +114,11 @@ void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
 static void StatusLED_Update(void);
 static void CalibrationButton_Update(void);
+static void SensorToBody(const float s[3], float b[3]);
+static void Attitude_StartTimebase(void);
+static void Attitude_Start(void);
+static void Attitude_Update(const float gyro_dps[3], const float accel_g[3]);
+static void Telemetry_Fill(uint32_t now);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -150,6 +188,15 @@ int main(void)
   /* Start after sensor warm-up, with the board stationary. */
   IMU_Calibration_Start(&imu_cal);
   USB_Telemetry_Init();
+
+  /* Free-running cycle counter used for the filter's dt. */
+  CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+  DWT->CYCCNT = 0U;
+  DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+
+  /* Defaults from dash.py; tune on hardware. */
+  MEKF_Init(&ekf, NULL);
+  MotorMixer_Init(&mixer, NULL);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -199,6 +246,7 @@ int main(void)
                           &imu_cal_result))
                   {
                       imu_calibration_ready = 1;
+                      Attitude_Start();
                   }
               }
           }
@@ -240,6 +288,9 @@ int main(void)
               mpu_corrected.accel_x_g = accel_corrected_g[0];
               mpu_corrected.accel_y_g = accel_corrected_g[1];
               mpu_corrected.accel_z_g = accel_corrected_g[2];
+
+              /* Attitude estimate and motor response for this sample */
+              Attitude_Update(gyro_corrected_dps, accel_corrected_g);
           }
 
           /* Send corrected IMU data at configured telemetry rate */
@@ -251,7 +302,8 @@ int main(void)
           {
               last_telemetry_ms = now;
 
-              USB_Telemetry_SendIMU(&mpu_corrected);
+              Telemetry_Fill(now);
+              USB_Telemetry_Send(&telemetry);
           }
       }
 
@@ -329,6 +381,134 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+static void SensorToBody(const float s[3], float b[3])
+{
+    for (uint8_t i = 0U; i < 3U; i++)
+    {
+        b[i] = SENSOR_TO_BODY[i][0] * s[0] +
+               SENSOR_TO_BODY[i][1] * s[1] +
+               SENSOR_TO_BODY[i][2] * s[2];
+    }
+}
+
+static void Attitude_StartTimebase(void)
+{
+    att_timebase_valid = 0;
+}
+
+/*
+ * Called once when the IMU calibration completes.
+ * The calibrated gyro already has its bias removed, so the filter starts
+ * with zero bias and only tracks the residual. The initial attitude is
+ * levelled from the calibrated static accelerometer mean (yaw = 0).
+ */
+static void Attitude_Start(void)
+{
+    const float zero3[3] = { 0.0f, 0.0f, 0.0f };
+    float gyro_unused[3];
+    float accel_corrected[3];
+    float accel_body[3];
+
+    IMU_Calibration_Apply(&imu_cal_result,
+                          zero3,
+                          imu_cal_result.static_accel_mean_g,
+                          gyro_unused,
+                          accel_corrected);
+
+    SensorToBody(accel_corrected, accel_body);
+
+    /*
+     * If this fails the filter simply stays in its own stationary
+     * calibration (started by MEKF_Init) and finishes on live samples.
+     */
+    (void)MEKF_StartWithKnownBias(&ekf, zero3, accel_body);
+
+    MotorMixer_Reset(&mixer);
+    MotorMixer_SetYawHold(&mixer, 0.0f);
+    Attitude_StartTimebase();
+}
+
+/*
+ * Run the MEKF and the motor mixer on one calibrated sample.
+ * Inputs are in the sensor frame: gyro in deg/s, accel in g.
+ */
+static void Attitude_Update(const float gyro_dps[3], const float accel_g[3])
+{
+    const uint32_t cycles = DWT->CYCCNT;
+    const uint32_t tick = HAL_GetTick();
+
+    if (!att_timebase_valid)
+    {
+        att_last_cycle = cycles;
+        att_last_tick = tick;
+        att_timebase_valid = 1;
+        return;
+    }
+
+    const float dt_s =
+        (float)(uint32_t)(cycles - att_last_cycle) / (float)SystemCoreClock;
+    const float tick_gap_s =
+        (float)(uint32_t)(tick - att_last_tick) * 0.001f;
+
+    att_last_cycle = cycles;
+    att_last_tick = tick;
+
+    /* Data gap: add process noise instead of propagating on a stale dt. */
+    if (dt_s > ATTITUDE_MAX_DT_S || tick_gap_s > ATTITUDE_MAX_DT_S)
+    {
+        MEKF_InflateCovariance(&ekf,
+                               (dt_s > tick_gap_s) ? dt_s : tick_gap_s);
+        MotorMixer_Reset(&mixer);
+        return;
+    }
+
+    if (dt_s <= 0.0f)
+        return;
+
+    float gyro_sensor_rads[3];
+    float gyro_body[3];
+    float accel_body[3];
+
+    for (uint8_t i = 0U; i < 3U; i++)
+        gyro_sensor_rads[i] = gyro_dps[i] * MEKF_DEG_TO_RAD;
+
+    SensorToBody(gyro_sensor_rads, gyro_body);
+    SensorToBody(accel_g, accel_body);
+
+    (void)MEKF_Process(&ekf, gyro_body, accel_body, dt_s);
+
+    /* Body rates with the filter's residual bias removed. */
+    float omega[3];
+
+    for (uint8_t i = 0U; i < 3U; i++)
+        omega[i] = gyro_body[i] - ekf.bg[i];
+
+    (void)MotorMixer_Update(&mixer,
+                            ekf.q,
+                            omega,
+                            dt_s,
+                            (MIXER_ENABLED != 0),
+                            MEKF_IsRunning(&ekf));
+}
+
+static void Telemetry_Fill(uint32_t now)
+{
+    telemetry.timestamp_ms = now;
+    telemetry.imu = mpu_corrected;
+
+    telemetry.filter_state = MEKF_GetState(&ekf);
+    telemetry.filter_event = MEKF_GetEvent(&ekf);
+
+    MEKF_GetQuaternion(&ekf, telemetry.q);
+    MEKF_GetEuler(&ekf,
+                  &telemetry.euler_rad[0],
+                  &telemetry.euler_rad[1],
+                  &telemetry.euler_rad[2]);
+    MEKF_GetGyroBias(&ekf, telemetry.gyro_bias_rads);
+
+    telemetry.motors = mixer.out;
+}
 
 
 static void StatusLED_Update(void)

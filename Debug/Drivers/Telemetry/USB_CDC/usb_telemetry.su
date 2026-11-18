@@ -1,3 +1,7 @@
-../Drivers/Telemetry/USB_CDC/usb_telemetry.c:7:6:USB_Telemetry_Init	4	static
-../Drivers/Telemetry/USB_CDC/usb_telemetry.c:12:6:USB_Telemetry_SendCalibrationStatus	160	static
-../Drivers/Telemetry/USB_CDC/usb_telemetry.c:112:6:USB_Telemetry_SendIMU	208	static
+../Drivers/Telemetry/USB_CDC/usb_telemetry.c:19:16:cdc_tx_idle	16	static
+../Drivers/Telemetry/USB_CDC/usb_telemetry.c:28:16:scaled	24	static
+../Drivers/Telemetry/USB_CDC/usb_telemetry.c:38:6:USB_Telemetry_Init	4	static
+../Drivers/Telemetry/USB_CDC/usb_telemetry.c:43:6:USB_Telemetry_SendCalibrationStatus	32	static
+../Drivers/Telemetry/USB_CDC/usb_telemetry.c:145:12:format_data_line	88	static
+../Drivers/Telemetry/USB_CDC/usb_telemetry.c:169:6:USB_Telemetry_SendIMU	24	static
+../Drivers/Telemetry/USB_CDC/usb_telemetry.c:183:9:USB_Telemetry_Send	248	static

@@ -33,6 +33,8 @@ Drivers/Telemetry/USB_CDC/usb_telemetry.o: \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_ll_usb.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_pcd_ex.h \
  C:/Users/hmz_i/SEM-5/XX/SORA_FC/Application/Calibration/imu_calibration.h \
+ C:/Users/hmz_i/SEM-5/XX/SORA_FC/Application/MEKF/mekf.h \
+ C:/Users/hmz_i/SEM-5/XX/SORA_FC/Application/Motor/motor_mixer.h \
  ../USB_DEVICE/App/usbd_cdc_if.h \
  ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc/usbd_cdc.h \
  ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_ioreq.h \
@@ -40,7 +42,9 @@ Drivers/Telemetry/USB_CDC/usb_telemetry.o: \
  ../USB_DEVICE/Target/usbd_conf.h ../Core/Inc/main.h \
  ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_core.h \
  ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_ioreq.h \
- ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_ctlreq.h
+ ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_ctlreq.h \
+ ../USB_DEVICE/App/usb_device.h \
+ ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_def.h
 ../Drivers/Telemetry/USB_CDC/usb_telemetry.h:
 C:/Users/hmz_i/SEM-5/XX/SORA_FC/Drivers/IMU/MPU6050/mpu6050.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h:
@@ -74,6 +78,8 @@ C:/Users/hmz_i/SEM-5/XX/SORA_FC/Drivers/IMU/MPU6050/mpu6050.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_ll_usb.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_pcd_ex.h:
 C:/Users/hmz_i/SEM-5/XX/SORA_FC/Application/Calibration/imu_calibration.h:
+C:/Users/hmz_i/SEM-5/XX/SORA_FC/Application/MEKF/mekf.h:
+C:/Users/hmz_i/SEM-5/XX/SORA_FC/Application/Motor/motor_mixer.h:
 ../USB_DEVICE/App/usbd_cdc_if.h:
 ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc/usbd_cdc.h:
 ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_ioreq.h:
@@ -83,3 +89,5 @@ C:/Users/hmz_i/SEM-5/XX/SORA_FC/Application/Calibration/imu_calibration.h:
 ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_core.h:
 ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_ioreq.h:
 ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_ctlreq.h:
+../USB_DEVICE/App/usb_device.h:
+../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_def.h:

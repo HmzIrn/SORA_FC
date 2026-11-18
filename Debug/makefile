@@ -18,6 +18,8 @@ RM := rm -rf
 -include Drivers/IMU/MPU6050/subdir.mk
 -include Core/Startup/subdir.mk
 -include Core/Src/subdir.mk
+-include Application/Motor/subdir.mk
+-include Application/MEKF/subdir.mk
 -include Application/Calibration/subdir.mk
 -include objects.mk
 

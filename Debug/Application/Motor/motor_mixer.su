@@ -1,0 +1,14 @@
+../Application/Motor/motor_mixer.c:26:13:all_finite	24	static
+../Application/Motor/motor_mixer.c:37:13:positive_finite	16	static
+../Application/Motor/motor_mixer.c:42:13:non_negative_finite	16	static
+../Application/Motor/motor_mixer.c:47:14:clampf	24	static
+../Application/Motor/motor_mixer.c:55:13:quat_mul	24	static
+../Application/Motor/motor_mixer.c:63:13:clear_output	24	static
+../Application/Motor/motor_mixer.c:73:13:finish_output	32	static
+../Application/Motor/motor_mixer.c:85:6:MotorMixer_GetDefaultConfig	16	static
+../Application/Motor/motor_mixer.c:105:13:sanitize_config	72	static
+../Application/Motor/motor_mixer.c:126:6:MotorMixer_Init	24	static
+../Application/Motor/motor_mixer.c:143:6:MotorMixer_Reset	16	static
+../Application/Motor/motor_mixer.c:152:6:MotorMixer_SetYawHold	16	static
+../Application/Motor/motor_mixer.c:160:7:MotorMixer_GetHoverThrust	16	static
+../Application/Motor/motor_mixer.c:168:28:MotorMixer_Update	248	static
