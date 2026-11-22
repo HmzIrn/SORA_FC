@@ -1,0 +1,74 @@
+Drivers/Telemetry/USB_CDC/usb_command.o: \
+ ../Drivers/Telemetry/USB_CDC/usb_command.c \
+ ../Drivers/Telemetry/USB_CDC/usb_command.h \
+ C:/Users/hmz_i/SEM-5/XX/SORA_FC/Application/Calibration/imu_calibration.h \
+ C:/Users/hmz_i/SEM-5/XX/SORA_FC/Application/MEKF/mekf.h \
+ C:/Users/hmz_i/SEM-5/XX/SORA_FC/Application/Motor/motor_mixer.h \
+ ../Drivers/Telemetry/USB_CDC/usb_telemetry.h \
+ C:/Users/hmz_i/SEM-5/XX/SORA_FC/Drivers/IMU/MPU6050/mpu6050.h \
+ ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h \
+ ../Core/Inc/stm32f4xx_hal_conf.h \
+ ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_rcc.h \
+ ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_def.h \
+ ../Drivers/CMSIS/Device/ST/STM32F4xx/Include/stm32f4xx.h \
+ ../Drivers/CMSIS/Device/ST/STM32F4xx/Include/stm32f401xc.h \
+ ../Drivers/CMSIS/Include/core_cm4.h \
+ ../Drivers/CMSIS/Include/cmsis_version.h \
+ ../Drivers/CMSIS/Include/cmsis_compiler.h \
+ ../Drivers/CMSIS/Include/cmsis_gcc.h \
+ ../Drivers/CMSIS/Include/mpu_armv7.h \
+ ../Drivers/CMSIS/Device/ST/STM32F4xx/Include/system_stm32f4xx.h \
+ ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy/stm32_hal_legacy.h \
+ ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_rcc_ex.h \
+ ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_gpio.h \
+ ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_gpio_ex.h \
+ ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_exti.h \
+ ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_dma.h \
+ ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_dma_ex.h \
+ ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_cortex.h \
+ ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_flash.h \
+ ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_flash_ex.h \
+ ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_flash_ramfunc.h \
+ ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_i2c.h \
+ ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_i2c_ex.h \
+ ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_pwr.h \
+ ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_pwr_ex.h \
+ ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_pcd.h \
+ ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_ll_usb.h \
+ ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_pcd_ex.h
+../Drivers/Telemetry/USB_CDC/usb_command.h:
+C:/Users/hmz_i/SEM-5/XX/SORA_FC/Application/Calibration/imu_calibration.h:
+C:/Users/hmz_i/SEM-5/XX/SORA_FC/Application/MEKF/mekf.h:
+C:/Users/hmz_i/SEM-5/XX/SORA_FC/Application/Motor/motor_mixer.h:
+../Drivers/Telemetry/USB_CDC/usb_telemetry.h:
+C:/Users/hmz_i/SEM-5/XX/SORA_FC/Drivers/IMU/MPU6050/mpu6050.h:
+../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h:
+../Core/Inc/stm32f4xx_hal_conf.h:
+../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_rcc.h:
+../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_def.h:
+../Drivers/CMSIS/Device/ST/STM32F4xx/Include/stm32f4xx.h:
+../Drivers/CMSIS/Device/ST/STM32F4xx/Include/stm32f401xc.h:
+../Drivers/CMSIS/Include/core_cm4.h:
+../Drivers/CMSIS/Include/cmsis_version.h:
+../Drivers/CMSIS/Include/cmsis_compiler.h:
+../Drivers/CMSIS/Include/cmsis_gcc.h:
+../Drivers/CMSIS/Include/mpu_armv7.h:
+../Drivers/CMSIS/Device/ST/STM32F4xx/Include/system_stm32f4xx.h:
+../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy/stm32_hal_legacy.h:
+../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_rcc_ex.h:
+../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_gpio.h:
+../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_gpio_ex.h:
+../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_exti.h:
+../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_dma.h:
+../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_dma_ex.h:
+../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_cortex.h:
+../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_flash.h:
+../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_flash_ex.h:
+../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_flash_ramfunc.h:
+../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_i2c.h:
+../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_i2c_ex.h:
+../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_pwr.h:
+../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_pwr_ex.h:
+../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_pcd.h:
+../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_ll_usb.h:
+../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_pcd_ex.h:

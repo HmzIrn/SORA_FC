@@ -1,9 +1,11 @@
+
 #include "usb_telemetry.h"
 #include "usbd_cdc_if.h"
 #include "usb_device.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <string.h>
 
 /*
  * CDC_Transmit_FS() does not copy the buffer: the USB peripheral keeps
@@ -16,12 +18,19 @@
 
 static char tx_buffer[TX_BUFFER_SIZE];
 
+/*
+ * True when the host has configured the device and the previous transfer
+ * has finished. Before enumeration nothing is transmitted, so messages are
+ * retried (calibration prompts) or skipped (telemetry) instead of being
+ * "sent" into the void.
+ */
 static uint8_t cdc_tx_idle(void)
 {
     USBD_CDC_HandleTypeDef *hcdc =
         (USBD_CDC_HandleTypeDef *)hUsbDeviceFS.pClassData;
 
-    return (hcdc != NULL) && (hcdc->TxState == 0U);
+    return (hUsbDeviceFS.dev_state == USBD_STATE_CONFIGURED) &&
+           (hcdc != NULL) && (hcdc->TxState == 0U);
 }
 
 /* Round-to-nearest conversion to a scaled integer; non-finite -> 0. */
@@ -178,6 +187,16 @@ void USB_Telemetry_SendIMU(const MPU6050_Data_t *imu)
         return;
 
     CDC_Transmit_FS((uint8_t *)tx_buffer, (uint16_t)len);
+}
+
+uint8_t USB_Telemetry_SendText(const char *text, uint16_t len)
+{
+    if (text == NULL || len == 0U || len > TX_BUFFER_SIZE || !cdc_tx_idle())
+        return 0U;
+
+    memcpy(tx_buffer, text, len);
+
+    return (CDC_Transmit_FS((uint8_t *)tx_buffer, len) == USBD_OK) ? 1U : 0U;
 }
 
 uint8_t USB_Telemetry_Send(const Telemetry_Data_t *data)

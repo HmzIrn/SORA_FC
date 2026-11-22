@@ -106,6 +106,13 @@ void MEKF_GetDefaultConfig(MEKF_Config_t *cfg);
  * Starts the built-in stationary calibration (same as MEKF_Reinitialize). */
 void MEKF_Init(MEKF_t *mekf, const MEKF_Config_t *cfg);
 
+/* Replace the tuning parameters at run time (invalid fields fall back to
+ * defaults). Does not restart or disturb the filter state. */
+void MEKF_SetConfig(MEKF_t *mekf, const MEKF_Config_t *cfg);
+
+/* Overwrite the current gyro-bias estimate [rad/s] (ignored if non-finite). */
+void MEKF_SetGyroBias(MEKF_t *mekf, const float bg_rads[3]);
+
 /* Identity attitude, zero bias, restart full stationary calibration. */
 void MEKF_Reinitialize(MEKF_t *mekf);
 

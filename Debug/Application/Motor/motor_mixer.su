@@ -6,9 +6,10 @@
 ../Application/Motor/motor_mixer.c:63:13:clear_output	24	static
 ../Application/Motor/motor_mixer.c:73:13:finish_output	32	static
 ../Application/Motor/motor_mixer.c:85:6:MotorMixer_GetDefaultConfig	16	static
-../Application/Motor/motor_mixer.c:105:13:sanitize_config	72	static
-../Application/Motor/motor_mixer.c:126:6:MotorMixer_Init	24	static
-../Application/Motor/motor_mixer.c:143:6:MotorMixer_Reset	16	static
-../Application/Motor/motor_mixer.c:152:6:MotorMixer_SetYawHold	16	static
-../Application/Motor/motor_mixer.c:160:7:MotorMixer_GetHoverThrust	16	static
-../Application/Motor/motor_mixer.c:168:28:MotorMixer_Update	248	static
+../Application/Motor/motor_mixer.c:108:13:sanitize_config	88	static
+../Application/Motor/motor_mixer.c:135:6:MotorMixer_SetConfig	88	static
+../Application/Motor/motor_mixer.c:146:6:MotorMixer_Init	24	static
+../Application/Motor/motor_mixer.c:163:6:MotorMixer_Reset	16	static
+../Application/Motor/motor_mixer.c:172:6:MotorMixer_SetYawHold	16	static
+../Application/Motor/motor_mixer.c:180:7:MotorMixer_GetHoverThrust	16	static
+../Application/Motor/motor_mixer.c:188:28:MotorMixer_Update	248	static

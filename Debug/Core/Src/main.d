@@ -37,7 +37,9 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
  C:/Users/hmz_i/SEM-5/XX/SORA_FC/Application/Calibration/imu_calibration.h \
  C:/Users/hmz_i/SEM-5/XX/SORA_FC/Drivers/Telemetry/USB_CDC/usb_telemetry.h \
  C:/Users/hmz_i/SEM-5/XX/SORA_FC/Application/MEKF/mekf.h \
- C:/Users/hmz_i/SEM-5/XX/SORA_FC/Application/Motor/motor_mixer.h
+ C:/Users/hmz_i/SEM-5/XX/SORA_FC/Application/Motor/motor_mixer.h \
+ C:/Users/hmz_i/SEM-5/XX/SORA_FC/Application/Config/config_store.h \
+ C:/Users/hmz_i/SEM-5/XX/SORA_FC/Drivers/Telemetry/USB_CDC/usb_command.h
 ../Core/Inc/main.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h:
 ../Core/Inc/stm32f4xx_hal_conf.h:
@@ -81,3 +83,5 @@ C:/Users/hmz_i/SEM-5/XX/SORA_FC/Application/Calibration/imu_calibration.h:
 C:/Users/hmz_i/SEM-5/XX/SORA_FC/Drivers/Telemetry/USB_CDC/usb_telemetry.h:
 C:/Users/hmz_i/SEM-5/XX/SORA_FC/Application/MEKF/mekf.h:
 C:/Users/hmz_i/SEM-5/XX/SORA_FC/Application/Motor/motor_mixer.h:
+C:/Users/hmz_i/SEM-5/XX/SORA_FC/Application/Config/config_store.h:
+C:/Users/hmz_i/SEM-5/XX/SORA_FC/Drivers/Telemetry/USB_CDC/usb_command.h:

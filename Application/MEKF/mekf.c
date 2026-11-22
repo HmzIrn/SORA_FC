@@ -468,6 +468,25 @@ void MEKF_Init(MEKF_t *mekf, const MEKF_Config_t *cfg)
     MEKF_Reinitialize(mekf);
 }
 
+void MEKF_SetConfig(MEKF_t *mekf, const MEKF_Config_t *cfg)
+{
+    if (mekf == NULL || cfg == NULL)
+        return;
+
+    MEKF_Config_t c = *cfg;
+
+    sanitize_config(&c);
+    mekf->cfg = c;
+}
+
+void MEKF_SetGyroBias(MEKF_t *mekf, const float bg_rads[3])
+{
+    if (mekf == NULL || bg_rads == NULL || !all_finite(bg_rads, 3U))
+        return;
+
+    memcpy(mekf->bg, bg_rads, sizeof(mekf->bg));
+}
+
 void MEKF_Reinitialize(MEKF_t *mekf)
 {
     if (mekf == NULL)

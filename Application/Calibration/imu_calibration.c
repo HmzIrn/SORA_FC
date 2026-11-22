@@ -265,6 +265,36 @@ void IMU_Calibration_Start(IMU_Calibration_t *cal)
     cal->stage = IMU_CAL_STAGE_STATIC;
 }
 
+bool IMU_Calibration_LoadResult(IMU_Calibration_t *cal,
+                                const IMU_CalibrationResult_t *result)
+{
+    if (cal == NULL || result == NULL)
+        return false;
+
+    for (uint8_t axis = 0U; axis < 3U; axis++)
+    {
+        const float scale = result->accel_scale[axis];
+        const float offset = result->accel_offset_g[axis];
+
+        if (!isfinite(result->gyro_bias_dps[axis]) ||
+            !isfinite(offset) || !isfinite(scale) ||
+            scale < 0.5f || scale > 2.0f ||
+            fabsf(offset) > cal->gravity_g)
+        {
+            return false;
+        }
+    }
+
+    cal->result = *result;
+    cal->completed_faces_mask = ACCEL_ALL_FACES_MASK;
+    cal->active_face = IMU_ACCEL_FACE_COUNT;
+    cal->active_face_complete = false;
+    cal->status = IMU_CAL_STATUS_COMPLETE;
+    cal->stage = IMU_CAL_STAGE_COMPLETE;
+
+    return true;
+}
+
 /* Collect gyro and accelerometer samples simultaneously while stationary. */
 static bool update_static(IMU_Calibration_t *cal,
                           const float gyro_sample[3],

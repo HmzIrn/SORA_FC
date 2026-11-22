@@ -1,0 +1,16 @@
+../Application/Config/config_store.c:70:17:crc32_update	32	static
+../Application/Config/config_store.c:83:17:record_crc	24	static
+../Application/Config/config_store.c:97:13:locate_sector	16	static
+../Application/Config/config_store.c:135:23:slot_ptr	16	static
+../Application/Config/config_store.c:140:17:slot_total	4	static
+../Application/Config/config_store.c:146:13:slot_used	32	static
+../Application/Config/config_store.c:162:13:slot_valid	40	static
+../Application/Config/config_store.c:192:22:scan	56	static
+../Application/Config/config_store.c:220:13:flash_clear_flags	4	static
+../Application/Config/config_store.c:227:13:flash_erase_sector	40	static
+../Application/Config/config_store.c:248:13:flash_program	40	static
+../Application/Config/config_store.c:275:6:ConfigStore_IsAvailable	8	static
+../Application/Config/config_store.c:280:6:ConfigStore_Load	40	static
+../Application/Config/config_store.c:296:6:ConfigStore_Save	336	static
+../Application/Config/config_store.c:344:6:ConfigStore_Erase	8	static
+../Application/Config/config_store.c:352:6:ConfigStore_GetInfo	40	static

@@ -30,11 +30,21 @@
 #include "usb_telemetry.h"
 #include "mekf.h"
 #include "motor_mixer.h"
+#include "config_store.h"
+#include "usb_command.h"
+#include <stdio.h>
+#include <string.h>
 
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
+typedef enum
+{
+    CONFIG_SOURCE_NONE = 0,      /* not calibrated yet                    */
+    CONFIG_SOURCE_FLASH,         /* loaded from flash at boot             */
+    CONFIG_SOURCE_CALIBRATED     /* calibrated in this session            */
+} ConfigSource_t;
 
 /* USER CODE END PTD */
 
@@ -50,6 +60,11 @@
  * The mixer output is only calculated and telemetered; nothing here drives
  * the motors. */
 #define MIXER_ENABLED       (1)
+
+/* Boot with stored data: average this much live accelerometer data to level
+ * the attitude filter before it starts. */
+#define BOOT_AVG_MIN_MS       (200U)
+#define BOOT_AVG_MIN_SAMPLES  (20U)
 
 /* USER CODE END PD */
 
@@ -89,6 +104,16 @@ MEKF_t ekf;
 MotorMixer_t mixer;
 Telemetry_Data_t telemetry;
 
+/* Persistent configuration / calibration sequencing */
+static ConfigSource_t config_source = CONFIG_SOURCE_NONE;
+static float    mekf_bias_dps[3];            /* residual gyro bias (persisted) */
+static uint8_t  save_after_mekf_cal = 0;     /* capture bias + save when MEKF done */
+static uint8_t  mekf_cal_bias_only = 0;
+static uint8_t  boot_avg_pending = 0;
+static uint32_t boot_avg_count = 0;
+static uint32_t boot_avg_start_ms = 0;
+static float    boot_avg_sum[3];
+
 static uint8_t  att_timebase_valid = 0;
 static uint32_t att_last_cycle = 0;
 static uint32_t att_last_tick = 0;
@@ -116,7 +141,20 @@ static void StatusLED_Update(void);
 static void CalibrationButton_Update(void);
 static void SensorToBody(const float s[3], float b[3]);
 static void Attitude_StartTimebase(void);
-static void Attitude_Start(void);
+static void Config_ApplyValues(const Config_Payload_t *p);
+static bool Config_Save(void);
+static bool Calibration_IsBusy(void);
+static bool Calibration_StartFull(void);
+static bool Calibration_StartBias(void);
+static void Calibration_OnImuComplete(void);
+static void Calibration_OnMekfComplete(void);
+static void Attitude_BootAverage(const float accel_g[3]);
+static bool Hook_Save(void);
+static bool Hook_Load(void);
+static bool Hook_Clear(void);
+static void Hook_Reboot(void);
+static void Hook_ParamChanged(const USB_Param_t *param);
+static int  Hook_FormatStatus(char *buf, size_t size);
 static void Attitude_Update(const float gyro_dps[3], const float accel_g[3]);
 static void Telemetry_Fill(uint32_t now);
 /* USER CODE END PFP */
@@ -185,8 +223,6 @@ int main(void)
       IMU_CAL_GRAVITY_G
   );
 
-  /* Start after sensor warm-up, with the board stationary. */
-  IMU_Calibration_Start(&imu_cal);
   USB_Telemetry_Init();
 
   /* Free-running cycle counter used for the filter's dt. */
@@ -197,6 +233,56 @@ int main(void)
   /* Defaults from dash.py; tune on hardware. */
   MEKF_Init(&ekf, NULL);
   MotorMixer_Init(&mixer, NULL);
+
+  /* Command interface (parameter table points at the live objects). */
+  {
+      const USB_Command_Bindings_t bindings =
+      {
+          .imu_result    = &imu_cal_result,
+          .mekf_cfg      = &ekf.cfg,
+          .mekf_bias_dps = mekf_bias_dps,
+          .mixer_cfg     = &mixer.cfg,
+          .hooks =
+          {
+              .start_full_calibration = Calibration_StartFull,
+              .start_bias_calibration = Calibration_StartBias,
+              .save                   = Hook_Save,
+              .load                   = Hook_Load,
+              .clear                  = Hook_Clear,
+              .reboot                 = Hook_Reboot,
+              .busy                   = Calibration_IsBusy,
+              .param_changed          = Hook_ParamChanged,
+              .format_status          = Hook_FormatStatus
+          }
+      };
+
+      USB_Command_Init(&bindings);
+  }
+
+  /*
+   * Stored calibration found -> use it (no six-face procedure).
+   * Otherwise run the full calibration with the board stationary.
+   */
+  {
+      Config_Payload_t stored;
+
+      if (ConfigStore_Load(&stored) &&
+          IMU_Calibration_LoadResult(&imu_cal, &stored.imu))
+      {
+          Config_ApplyValues(&stored);
+          imu_calibration_ready = 1;
+          config_source = CONFIG_SOURCE_FLASH;
+          boot_avg_pending = 1;
+          boot_avg_count = 0;
+          USB_Command_Notify("CFG,LOADED,using stored calibration; send CAL FULL to recalibrate");
+      }
+      else
+      {
+          /* Start after sensor warm-up, with the board stationary. */
+          IMU_Calibration_Start(&imu_cal);
+          USB_Command_Notify("CFG,EMPTY,no stored calibration; starting full calibration");
+      }
+  }
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -246,7 +332,7 @@ int main(void)
                           &imu_cal_result))
                   {
                       imu_calibration_ready = 1;
-                      Attitude_Start();
+                      Calibration_OnImuComplete();
                   }
               }
           }
@@ -309,6 +395,9 @@ int main(void)
 
       /* Button handling must run independently of DMA completion */
       CalibrationButton_Update();
+
+      /* USB command interface (parse commands, send queued replies) */
+      USB_Command_Process();
 
       /* Calibration status LED */
       StatusLED_Update();
@@ -397,36 +486,276 @@ static void Attitude_StartTimebase(void)
     att_timebase_valid = 0;
 }
 
-/*
- * Called once when the IMU calibration completes.
- * The calibrated gyro already has its bias removed, so the filter starts
- * with zero bias and only tracks the residual. The initial attitude is
- * levelled from the calibrated static accelerometer mean (yaw = 0).
- */
-static void Attitude_Start(void)
+/* ------------------------------------------------------------------------ */
+/* Persistent configuration                                                 */
+/* ------------------------------------------------------------------------ */
+
+static void Config_Gather(Config_Payload_t *p)
 {
-    const float zero3[3] = { 0.0f, 0.0f, 0.0f };
-    float gyro_unused[3];
-    float accel_corrected[3];
+    memset(p, 0, sizeof(*p));
+
+    p->imu = imu_cal_result;
+    p->mekf = ekf.cfg;
+    p->mixer = mixer.cfg;
+    memcpy(p->mekf_bias_dps, mekf_bias_dps, sizeof(mekf_bias_dps));
+}
+
+/* Push stored values into the live objects (no state machine changes). */
+static void Config_ApplyValues(const Config_Payload_t *p)
+{
+    float bg[3];
+
+    imu_cal_result = p->imu;
+    MEKF_SetConfig(&ekf, &p->mekf);
+    MotorMixer_SetConfig(&mixer, &p->mixer);
+    memcpy(mekf_bias_dps, p->mekf_bias_dps, sizeof(mekf_bias_dps));
+
+    for (uint8_t i = 0U; i < 3U; i++)
+        bg[i] = mekf_bias_dps[i] * MEKF_DEG_TO_RAD;
+
+    MEKF_SetGyroBias(&ekf, bg);
+}
+
+static bool Config_Save(void)
+{
+    Config_Payload_t p;
+    ConfigStore_Info_t info;
+    char msg[64];
+
+    Config_Gather(&p);
+
+    if (!ConfigStore_Save(&p))
+    {
+        USB_Command_Notify("ERR,SAVE_FAILED,flash write failed or storage unavailable");
+        return false;
+    }
+
+    USB_Command_ClearDirty();
+    ConfigStore_GetInfo(&info);
+    snprintf(msg, sizeof(msg), "CFG,SAVED,seq=%lu", (unsigned long)info.sequence);
+    USB_Command_Notify(msg);
+
+    return true;
+}
+
+/* ------------------------------------------------------------------------ */
+/* Calibration sequencing                                                   */
+/*                                                                          */
+/*  CAL FULL / first boot:  IMU six-face calibration (button)               */
+/*                          -> MEKF stationary calibration (bias + level)   */
+/*                          -> bias captured, everything saved to flash     */
+/*  CAL BIAS:               MEKF bias-only calibration -> saved             */
+/*  Boot with stored data:  average ~0.2 s of live accel to level the       */
+/*                          filter, start with the stored bias              */
+/* ------------------------------------------------------------------------ */
+
+static bool Calibration_IsBusy(void)
+{
+    return (!imu_calibration_ready) ||
+           (IMU_Calibration_GetStatus(&imu_cal) == IMU_CAL_STATUS_COLLECTING) ||
+           save_after_mekf_cal ||
+           boot_avg_pending;
+}
+
+static bool Calibration_StartFull(void)
+{
+    imu_calibration_ready = 0;
+    boot_avg_pending = 0;
+    save_after_mekf_cal = 0;
+    mekf_cal_bias_only = 0;
+    next_face = 0;
+    selected_face = 0;
+    config_source = CONFIG_SOURCE_NONE;
+
+    IMU_Calibration_Init(&imu_cal,
+                         IMU_CAL_DEFAULT_GYRO_SAMPLES,
+                         IMU_CAL_DEFAULT_ACCEL_SAMPLES,
+                         IMU_CAL_GRAVITY_G);
+    IMU_Calibration_Start(&imu_cal);
+
+    MotorMixer_Reset(&mixer);
+    return true;
+}
+
+static bool Calibration_StartBias(void)
+{
+    if (!imu_calibration_ready || boot_avg_pending ||
+        IMU_Calibration_GetStatus(&imu_cal) != IMU_CAL_STATUS_COMPLETE)
+    {
+        return false;
+    }
+
+    mekf_cal_bias_only = 1;
+    save_after_mekf_cal = 1;
+
+    MEKF_RecalibrateBias(&ekf);
+    MotorMixer_Reset(&mixer);
+    Attitude_StartTimebase();
+    return true;
+}
+
+/* IMU six-face calibration finished: now level + bias-calibrate the filter. */
+static void Calibration_OnImuComplete(void)
+{
+    config_source = CONFIG_SOURCE_CALIBRATED;
+    mekf_cal_bias_only = 0;
+    save_after_mekf_cal = 1;
+    memset(mekf_bias_dps, 0, sizeof(mekf_bias_dps));
+
+    MEKF_Reinitialize(&ekf);
+    MotorMixer_Reset(&mixer);
+    MotorMixer_SetYawHold(&mixer, 0.0f);
+    Attitude_StartTimebase();
+
+    USB_Command_Notify("CAL,MEKF,Place the board level and keep it still");
+}
+
+/* The filter finished its stationary calibration: capture bias, save. */
+static void Calibration_OnMekfComplete(void)
+{
+    const bool with_motion =
+        (MEKF_GetEvent(&ekf) == MEKF_EVENT_RUNNING_CALIBRATED_WITH_MOTION);
+
+    save_after_mekf_cal = 0;
+
+    if (mekf_cal_bias_only && with_motion)
+    {
+        float old_bg[3];
+
+        for (uint8_t i = 0U; i < 3U; i++)
+            old_bg[i] = mekf_bias_dps[i] * MEKF_DEG_TO_RAD;
+
+        MEKF_SetGyroBias(&ekf, old_bg);
+        USB_Command_Notify("ERR,CAL_BIAS,motion detected; previous bias kept. Retry with the board still");
+        return;
+    }
+
+    float bg[3];
+
+    MEKF_GetGyroBias(&ekf, bg);
+
+    for (uint8_t i = 0U; i < 3U; i++)
+        mekf_bias_dps[i] = bg[i] * MEKF_RAD_TO_DEG;
+
+    if (with_motion)
+        USB_Command_Notify("WARN,CAL,motion during the bias estimate; run CAL BIAS when stationary");
+
+    (void)Config_Save();
+}
+
+/* Boot with stored data: level the filter from live accelerometer data. */
+static void Attitude_BootAverage(const float accel_g[3])
+{
     float accel_body[3];
+    float mean[3];
+    float bias_rads[3];
 
-    IMU_Calibration_Apply(&imu_cal_result,
-                          zero3,
-                          imu_cal_result.static_accel_mean_g,
-                          gyro_unused,
-                          accel_corrected);
+    SensorToBody(accel_g, accel_body);
 
-    SensorToBody(accel_corrected, accel_body);
+    const uint32_t now = HAL_GetTick();
 
-    /*
-     * If this fails the filter simply stays in its own stationary
-     * calibration (started by MEKF_Init) and finishes on live samples.
-     */
-    (void)MEKF_StartWithKnownBias(&ekf, zero3, accel_body);
+    if (boot_avg_count == 0U)
+    {
+        boot_avg_start_ms = now;
+        memset(boot_avg_sum, 0, sizeof(boot_avg_sum));
+    }
+
+    for (uint8_t i = 0U; i < 3U; i++)
+        boot_avg_sum[i] += accel_body[i];
+
+    boot_avg_count++;
+
+    if ((uint32_t)(now - boot_avg_start_ms) < BOOT_AVG_MIN_MS ||
+        boot_avg_count < BOOT_AVG_MIN_SAMPLES)
+    {
+        return;
+    }
+
+    for (uint8_t i = 0U; i < 3U; i++)
+    {
+        mean[i] = boot_avg_sum[i] / (float)boot_avg_count;
+        bias_rads[i] = mekf_bias_dps[i] * MEKF_DEG_TO_RAD;
+    }
+
+    boot_avg_pending = 0;
+
+    if (!MEKF_StartWithKnownBias(&ekf, bias_rads, mean))
+    {
+        /* Fall back to the filter's own stationary calibration. */
+        MEKF_Reinitialize(&ekf);
+    }
 
     MotorMixer_Reset(&mixer);
     MotorMixer_SetYawHold(&mixer, 0.0f);
     Attitude_StartTimebase();
+}
+
+/* ------------------------------------------------------------------------ */
+/* Command hooks                                                            */
+/* ------------------------------------------------------------------------ */
+
+static bool Hook_Save(void)
+{
+    return Config_Save();
+}
+
+static bool Hook_Load(void)
+{
+    Config_Payload_t p;
+
+    if (!ConfigStore_Load(&p))
+        return false;
+
+    Config_ApplyValues(&p);
+    return true;
+}
+
+static bool Hook_Clear(void)
+{
+    return ConfigStore_Erase();
+}
+
+static void Hook_Reboot(void)
+{
+    HAL_Delay(50U);   /* let the reply leave the USB FIFO */
+    NVIC_SystemReset();
+}
+
+static void Hook_ParamChanged(const USB_Param_t *param)
+{
+    if (param->apply == USB_PARAM_APPLY_MEKF_BIAS)
+    {
+        float bg[3];
+
+        for (uint8_t i = 0U; i < 3U; i++)
+            bg[i] = mekf_bias_dps[i] * MEKF_DEG_TO_RAD;
+
+        MEKF_SetGyroBias(&ekf, bg);
+    }
+}
+
+static int Hook_FormatStatus(char *buf, size_t size)
+{
+    static const char *const status_names[] =
+        { "idle", "collecting", "complete", "error" };
+    static const char *const source_names[] =
+        { "none", "flash", "calibrated" };
+
+    ConfigStore_Info_t info;
+    const unsigned int st = (unsigned int)IMU_Calibration_GetStatus(&imu_cal);
+
+    ConfigStore_GetInfo(&info);
+
+    return snprintf(buf, size,
+        "STATUS,imu_cal=%s,source=%s,mekf=%s,dirty=%u,store=%s,seq=%lu,slots=%lu/%lu",
+        (st < 4U) ? status_names[st] : "?",
+        source_names[(unsigned int)config_source],
+        MEKF_IsRunning(&ekf) ? "running" : "calibrating",
+        USB_Command_IsDirty() ? 1U : 0U,
+        !info.available ? "unavailable" : (info.valid ? "ok" : "empty"),
+        (unsigned long)info.sequence,
+        (unsigned long)info.slots_used,
+        (unsigned long)info.slot_count);
 }
 
 /*
@@ -435,6 +764,13 @@ static void Attitude_Start(void)
  */
 static void Attitude_Update(const float gyro_dps[3], const float accel_g[3])
 {
+    /* Boot with stored calibration: level the filter first. */
+    if (boot_avg_pending)
+    {
+        Attitude_BootAverage(accel_g);
+        return;
+    }
+
     const uint32_t cycles = DWT->CYCCNT;
     const uint32_t tick = HAL_GetTick();
 
@@ -477,6 +813,10 @@ static void Attitude_Update(const float gyro_dps[3], const float accel_g[3])
     SensorToBody(accel_g, accel_body);
 
     (void)MEKF_Process(&ekf, gyro_body, accel_body, dt_s);
+
+    /* Stationary MEKF calibration finished: store bias + configuration. */
+    if (save_after_mekf_cal && MEKF_IsRunning(&ekf))
+        Calibration_OnMekfComplete();
 
     /* Body rates with the filter's residual bias removed. */
     float omega[3];

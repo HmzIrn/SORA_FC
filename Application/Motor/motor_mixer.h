@@ -67,6 +67,9 @@ typedef struct
     bool  use_integral;   /* OFF for bench tests, ON for flight                  */
     float min_cos_tilt;   /* tilt compensation limit                             */
     float max_tilt_deg;   /* beyond this the mixer outputs idle (fail-safe)      */
+    float trim[3];        /* constant roll/pitch/yaw command bias (thrust
+                             fraction), added to the controller output; use it
+                             to cancel CG / motor asymmetry                      */
 } MotorMixer_Config_t;
 
 typedef struct
@@ -94,6 +97,10 @@ void MotorMixer_GetDefaultConfig(MotorMixer_Config_t *cfg);
 
 /* cfg may be NULL (defaults). Invalid fields fall back to defaults. */
 void MotorMixer_Init(MotorMixer_t *mixer, const MotorMixer_Config_t *cfg);
+
+/* Replace the tuning parameters at run time (invalid fields fall back to
+ * defaults). Integrator, output and yaw set-point are not touched. */
+void MotorMixer_SetConfig(MotorMixer_t *mixer, const MotorMixer_Config_t *cfg);
 
 /* Clears integrator and output. Yaw set-point is kept. */
 void MotorMixer_Reset(MotorMixer_t *mixer);

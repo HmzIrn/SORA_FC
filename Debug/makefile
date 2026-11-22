@@ -20,6 +20,7 @@ RM := rm -rf
 -include Core/Src/subdir.mk
 -include Application/Motor/subdir.mk
 -include Application/MEKF/subdir.mk
+-include Application/Config/subdir.mk
 -include Application/Calibration/subdir.mk
 -include objects.mk
 

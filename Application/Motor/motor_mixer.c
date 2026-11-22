@@ -100,6 +100,9 @@ void MotorMixer_GetDefaultConfig(MotorMixer_Config_t *cfg)
     cfg->use_integral = false;
     cfg->min_cos_tilt = 0.5f;
     cfg->max_tilt_deg = 60.0f;
+    cfg->trim[0]      = 0.0f;
+    cfg->trim[1]      = 0.0f;
+    cfg->trim[2]      = 0.0f;
 }
 
 static void sanitize_config(MotorMixer_Config_t *cfg)
@@ -121,6 +124,23 @@ static void sanitize_config(MotorMixer_Config_t *cfg)
     if (!non_negative_finite(cfg->i_limit))   cfg->i_limit      = def.i_limit;
     if (!positive_finite(cfg->min_cos_tilt))  cfg->min_cos_tilt = def.min_cos_tilt;
     if (!positive_finite(cfg->max_tilt_deg))  cfg->max_tilt_deg = def.max_tilt_deg;
+
+    for (uint8_t i = 0U; i < 3U; i++)
+    {
+        if (!isfinite(cfg->trim[i]) || fabsf(cfg->trim[i]) > 0.5f)
+            cfg->trim[i] = 0.0f;
+    }
+}
+
+void MotorMixer_SetConfig(MotorMixer_t *mixer, const MotorMixer_Config_t *cfg)
+{
+    if (mixer == NULL || cfg == NULL)
+        return;
+
+    MotorMixer_Config_t c = *cfg;
+
+    sanitize_config(&c);
+    mixer->cfg = c;
 }
 
 void MotorMixer_Init(MotorMixer_t *mixer, const MotorMixer_Config_t *cfg)
@@ -246,7 +266,8 @@ const MotorMixer_Output_t *MotorMixer_Update(MotorMixer_t *mixer,
     float u[3];
 
     for (uint8_t i = 0U; i < 3U; i++)
-        u[i] = kp[i] * e[i] + ki[i] * mixer->integrator[i] - kd[i] * omega[i];
+        u[i] = kp[i] * e[i] + ki[i] * mixer->integrator[i] - kd[i] * omega[i] +
+               c->trim[i];
 
     float d[NUM_MOTORS];
     float d_min, d_max;

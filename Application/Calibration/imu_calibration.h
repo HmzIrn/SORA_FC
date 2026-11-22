@@ -114,6 +114,14 @@ void IMU_Calibration_Init(IMU_Calibration_t *cal,
 
 void IMU_Calibration_Start(IMU_Calibration_t *cal);
 
+/*
+ * Install a previously stored result (e.g. from flash) and mark the
+ * calibration COMPLETE without collecting any samples.
+ * Returns false (state unchanged) if any value is non-finite or implausible.
+ */
+bool IMU_Calibration_LoadResult(IMU_Calibration_t *cal,
+                                const IMU_CalibrationResult_t *result);
+
 bool IMU_Calibration_SetAccelFace(IMU_Calibration_t *cal,
                                   IMU_AccelCalibrationFace_t face);
 

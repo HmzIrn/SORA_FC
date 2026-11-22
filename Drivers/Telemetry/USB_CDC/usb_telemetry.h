@@ -84,4 +84,12 @@ void USB_Telemetry_SendIMU(const MPU6050_Data_t *imu);
  */
 uint8_t USB_Telemetry_Send(const Telemetry_Data_t *data);
 
+/*
+ * Transmit a ready-made text buffer (used by the command interface for
+ * replies). The text is copied into the shared transmit buffer, so the
+ * caller's buffer may be reused immediately. Returns 1 when queued, 0 if
+ * the USB endpoint is busy or the host is not connected (retry later).
+ */
+uint8_t USB_Telemetry_SendText(const char *text, uint16_t len);
+
 #endif
