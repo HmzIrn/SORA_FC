@@ -54,7 +54,7 @@ static const char *const help_lines[] =
 {
     "HELP,HELP | STATUS | LIST [prefix] | GET <name> | SET <name> <value>",
     "HELP,SAVE | LOAD | CLEAR | REBOOT | CAL FULL | CAL BIAS",
-    "HELP,groups: cal.* (gyro/accel calibration)  mekf.* (filter, residual bias)  mix.* (PID, limits, trims)",
+    "HELP,groups: cal.* (gyro/accel calibration, SENSOR axes)  mekf.* (filter; bias_* in BODY FRD axes)  mix.* (PID, limits, trims)",
     "HELP,SET changes one value live; SAVE stores everything to flash"
 };
 

@@ -39,6 +39,12 @@ extern "C" {
  * "WARN,". Parameter groups: cal.* (accel/gyro calibration), mekf.* (filter
  * tuning + residual gyro bias), mix.* (PID, limits, trims).
  *
+ * FRAMES: cal.gyro_bias_*, cal.accel_offset_*, cal.accel_scale_* are in the SENSOR
+ * frame (applied to the raw IMU values). mekf.bias_* is the filter's residual gyro
+ * bias and is in the BODY frame (FRD), i.e. after the SENSOR_TO_BODY mapping in
+ * main.c - with the default diag(1,-1,-1) mapping the y and z signs are flipped
+ * relative to the sensor frame. Units: bias in deg/s, offsets in g.
+ *
  * Integration: call USB_Command_Feed() from CDC_Receive_FS() and
  * USB_Command_Process() once per main-loop iteration.
  */
